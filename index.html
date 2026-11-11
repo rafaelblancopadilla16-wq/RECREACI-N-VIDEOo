@@ -1,0 +1,477 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8 de diciembre de 2015 — Reconstrucción 3D</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080d14;color:#fff;
+ font-family:Arial,sans-serif;overflow:hidden
+}
+#scene{position:fixed;inset:0}
+#top{
+ position:fixed;top:0;left:0;right:0;z-index:5;
+ padding:17px 22px;
+ background:linear-gradient(#05080ddd,transparent);
+ pointer-events:none
+}
+#top h1{font-size:clamp(17px,3vw,27px);margin:0 0 5px;letter-spacing:1px}
+#top p{margin:0;color:#bdc7d2;font-size:12px}
+#panel{
+ position:fixed;left:14px;bottom:14px;z-index:10;
+ width:min(390px,calc(100vw - 28px));
+ padding:14px;background:#101925ed;
+ border:1px solid #455367;border-radius:12px;
+ box-shadow:0 8px 35px #0009
+}
+#sceneTitle{font-size:16px;font-weight:bold;margin-bottom:7px}
+#description{font-size:12px;line-height:1.5;color:#d4dce6;min-height:38px}
+.controls{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+button{
+ background:#26384c;color:white;border:1px solid #52657a;
+ border-radius:7px;padding:8px 10px;cursor:pointer;font-size:12px
+}
+button:hover{background:#3a536e}
+button.active{background:#a83b35;border-color:#f08070}
+#timeline{width:100%;margin-top:12px;accent-color:#e45b4e}
+#timeLabel{font-size:11px;color:#aebdcd;margin-top:5px}
+#disclaimer{
+ position:fixed;right:14px;bottom:14px;z-index:5;
+ max-width:250px;text-align:right;font-size:10px;
+ color:#c0c8d2;background:#101925bd;
+ padding:8px;border-radius:7px;pointer-events:none
+}
+#loading{
+ position:fixed;inset:0;display:grid;place-items:center;
+ background:#080d14;z-index:30;color:white
+}
+@media(max-width:600px){
+ #disclaimer{display:none}
+ #panel{bottom:8px;left:8px;width:calc(100vw - 16px)}
+}
+</style>
+
+<script type="importmap">
+{
+ "imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+ }
+}
+</script>
+</head>
+
+<body>
+<div id="loading">Preparando reconstrucción tridimensional…</div>
+<div id="scene"></div>
+
+<header id="top">
+ <h1>8 DE DICIEMBRE DE 2015</h1>
+ <p>EL TIROTEO DE MONTALBÁN · RECONSTRUCCIÓN AUDIOVISUAL</p>
+</header>
+
+<div id="panel">
+ <div id="sceneTitle">Escena 1 · Vista general</div>
+ <div id="description">Reconstrucción tridimensional aproximada del entorno de la vivienda.</div>
+
+ <div class="controls">
+  <button id="prev">◀ Anterior</button>
+  <button id="play" class="active">▶ Reproducir</button>
+  <button id="next">Siguiente ▶</button>
+  <button id="roof">Ocultar tejado</button>
+  <button id="topView">Vista cenital</button>
+  <button id="outside">Vista exterior</button>
+  <button id="sound">🔊 Narración</button>
+ </div>
+
+ <input id="timeline" type="range" min="0" max="7" value="0" step="1">
+ <div id="timeLabel">Escena 1 de 8</div>
+</div>
+
+<div id="disclaimer">
+ Recreación ilustrativa. La arquitectura, posiciones y movimientos no representan un plano policial verificado.
+</div>
+
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+
+const container=document.getElementById("scene");
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x111b29);
+scene.fog=new THREE.Fog(0x111b29,24,65);
+
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,150);
+camera.position.set(12,10,15);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.target.set(0,1,0);
+controls.maxPolarAngle=Math.PI*.49;
+
+scene.add(new THREE.HemisphereLight(0xaec8e8,0x25202a,1.2));
+
+const moon=new THREE.DirectionalLight(0xc2d7ff,2.1);
+moon.position.set(-8,15,8);
+moon.castShadow=true;
+scene.add(moon);
+
+const fill=new THREE.PointLight(0xffd5a0,45,25);
+fill.position.set(0,5,1);
+scene.add(fill);
+
+const materials={
+ ground:new THREE.MeshStandardMaterial({color:0x343b43,roughness:1}),
+ road:new THREE.MeshStandardMaterial({color:0x20262d,roughness:.95}),
+ wall:new THREE.MeshStandardMaterial({color:0xc4b9a6,roughness:1}),
+ wallSide:new THREE.MeshStandardMaterial({color:0x8f877b,roughness:1}),
+ roof:new THREE.MeshStandardMaterial({color:0x70483a,roughness:1}),
+ dark:new THREE.MeshStandardMaterial({color:0x17202a}),
+ glass:new THREE.MeshStandardMaterial({color:0x253e56,metalness:.25,roughness:.2}),
+ wood:new THREE.MeshStandardMaterial({color:0x62412e}),
+ police:new THREE.MeshStandardMaterial({color:0x182b43,roughness:.55}),
+ white:new THREE.MeshStandardMaterial({color:0xd8dce0,roughness:.7}),
+ skin:new THREE.MeshStandardMaterial({color:0xc99470}),
+ uniform:new THREE.MeshStandardMaterial({color:0x182b46}),
+ civilian:new THREE.MeshStandardMaterial({color:0x4a5967}),
+ red:new THREE.MeshStandardMaterial({color:0xb52c2c,emissive:0x5c0808}),
+ yellow:new THREE.MeshStandardMaterial({color:0xd4a63e}),
+ marker:new THREE.MeshStandardMaterial({color:0xffc342,emissive:0x5b3100})
+};
+
+function box(parent,x,y,z,w,h,d,mat){
+ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+ m.position.set(x,y,z);
+ m.castShadow=true;m.receiveShadow=true;
+ parent.add(m);return m;
+}
+
+function cylinder(parent,x,y,z,r1,r2,h,mat){
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,16),mat);
+ m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;
+}
+
+const ground=box(scene,0,-.25,0,60,.4,60,materials.ground);
+const road=box(scene,0,-.02,7,60,.08,5,materials.road);
+
+for(let x=-25;x<26;x+=5){
+ box(scene,x,.04,7,.18,.02,1.8,materials.yellow);
+}
+
+// Calle y aceras
+box(scene,0,.05,3.8,60,.2,1.1,materials.wallSide);
+box(scene,0,.05,10.2,60,.2,1.1,materials.wallSide);
+
+// Casa: dimensiones ilustrativas
+const house=new THREE.Group();
+scene.add(house);
+house.position.set(0,0,0);
+
+const interior=new THREE.Group();
+house.add(interior);
+
+// Suelo interior
+box(interior,0,.25,0,8,.35,7,materials.wallSide);
+
+// Pared trasera y laterales
+box(interior,0,2.0,-3.5,8,3.5,.22,materials.wall);
+box(interior,-4,2,0,.22,3.5,7,materials.wallSide);
+box(interior,4,2,0,.22,3.5,7,materials.wallSide);
+
+// Fachada frontal dividida para dejar puerta
+box(interior,-2.65,2,3.5,2.7,3.5,.22,materials.wall);
+box(interior,2.65,2,3.5,2.7,3.5,.22,materials.wall);
+box(interior,0,3.35,3.5,2.6,.8,.22,materials.wall);
+
+// Divisiones interiores
+box(interior,-.1,1.8,-1.2,.15,3.1,4.5,materials.wall);
+box(interior,2,1.8,-1.5,4,.15,2.8,materials.wall);
+
+// Puerta
+const door=box(interior,0,1.45,3.38,1.3,2.8,.12,materials.wood);
+
+// Ventanas
+function window3d(x,y,z){
+ box(interior,x,y,z,.95,.85,.12,materials.dark);
+ box(interior,x,y,z+.08,.78,.68,.04,materials.glass);
+ box(interior,x,y,z+.12,.06,.8,.04,materials.white);
+ box(interior,x,y,z+.12,.85,.05,.04,materials.white);
+}
+window3d(-3,2.2,3.35);
+window3d(3,2.2,3.35);
+window3d(-3,2.2,-3.35);
+
+// Tejado
+const roof=new THREE.Group();
+house.add(roof);
+const roofBase=box(roof,0,3.9,0,8.7,.22,7.7,materials.roof);
+const roofLeft=box(roof,-2.1,4.35,0,4.4,.18,8,materials.roof);
+roofLeft.rotation.z=-.38;
+const roofRight=box(roof,2.1,4.35,0,4.4,.18,8,materials.roof);
+roofRight.rotation.z=.38;
+box(roof,0,4.75,0,.22,.2,8,materials.roof);
+
+// Chimenea
+box(roof,-2.7,4.7,-2.2,.6,1,.6,materials.wallSide);
+
+// Edificio vecino
+const neighbor=new THREE.Group();
+scene.add(neighbor);
+box(neighbor,-10,2,-1,7,4,8,materials.wallSide);
+box(neighbor,-10,4.1,-1,7,.25,8,materials.roof);
+
+// Personajes 3D
+function person(x,z,kind="police",rotation=0){
+ const g=new THREE.Group();
+ g.position.set(x,.35,z);
+ g.rotation.y=rotation;
+ const clothes=kind==="police"?materials.uniform:materials.civilian;
+
+ cylinder(g,0,1.8,0,.24,.25,.48,materials.skin);
+ box(g,0,1.15,0,.55,.8,.3,clothes);
+
+ // Brazos
+ const arm1=box(g,-.38,1.25,0,.17,.68,.18,clothes);
+ const arm2=box(g,.38,1.25,0,.17,.68,.18,clothes);
+ arm1.rotation.z=-.12;arm2.rotation.z=.12;
+
+ // Piernas
+ box(g,-.15,.55,0,.2,.55,.22,materials.dark);
+ box(g,.15,.55,0,.2,.55,.22,materials.dark);
+
+ // Cabeza
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.23,16,12),materials.skin);
+ head.position.y=2.2;g.add(head);
+
+ // Casco policial
+ if(kind==="police"){
+  const helmet=new THREE.Mesh(new THREE.SphereGeometry(.25,16,8,0,Math.PI*2,0,Math.PI/2),materials.police);
+  helmet.position.y=2.35;g.add(helmet);
+ }
+ scene.add(g);return g;
+}
+
+const people=[];
+people.push(person(-2,1.2,"civilian",Math.PI));
+people.push(person(1.5,-1.6,"civilian",0));
+people.push(person(-5,5,"police",0));
+people.push(person(-7,6,"police",0));
+people.push(person(5,5,"police",Math.PI));
+people.push(person(7,6,"police",Math.PI));
+
+// Vehículo policial
+function policeCar(x,z,rotation=0){
+ const g=new THREE.Group();
+ g.position.set(x,.2,z);g.rotation.y=rotation;
+ box(g,0,.55,0,2.2,.65,4,materials.police);
+ box(g,0,1.05,-.15,1.8,.65,2.0,materials.white);
+ box(g,0,1.48,-.15,1.5,.08,.45,materials.red);
+ box(g,0,1.52,-.15,.45,.12,.5,materials.glass);
+ for(const xw of [-1,1]){
+  for(const zw of [-1.35,1.35]){
+   cylinder(g,xw,.28,zw,.35,.35,.18,materials.dark);
+  }
+ }
+ const blue=new THREE.PointLight(0x2277ff,0,7);
+ blue.position.set(-.4,1.8,0);g.add(blue);
+ const redLight=new THREE.PointLight(0xff2222,0,7);
+ redLight.position.set(.4,1.8,0);g.add(redLight);
+ g.userData.lights=[blue,redLight];
+ scene.add(g);return g;
+}
+
+const cars=[
+ policeCar(-5,8,0),
+ policeCar(5,8,Math.PI),
+ policeCar(9,5,Math.PI/2)
+];
+
+// Marcadores explicativos
+const markers=[];
+function marker(x,z,label){
+ const g=new THREE.Group();g.position.set(x,.2,z);
+ const cone=new THREE.Mesh(new THREE.ConeGeometry(.22,.55,12),materials.marker);
+ cone.position.y=.45;g.add(cone);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.4,.035,8,24),materials.marker);
+ ring.rotation.x=Math.PI/2;ring.position.y=.1;g.add(ring);
+ scene.add(g);markers.push(g);return g;
+}
+marker(0,3.8,"A");
+marker(-2,1,"B");
+marker(2,-2,"C");
+
+// Cámara: posiciones por secuencia
+const scenes=[
+ {
+  title:"Escena 1 · Vista general",
+  desc:"Vista exterior del entorno. Se presenta la vivienda y la calle en una reconstrucción aproximada.",
+  cam:[13,11,17],target:[0,1,0],roof:true,people:true,cars:false
+ },
+ {
+  title:"Escena 2 · Aproximación a la vivienda",
+  desc:"La cámara se acerca a la fachada para mostrar la entrada, las ventanas y el entorno inmediato.",
+  cam:[7,5,11],target:[0,1.5,0],roof:true,people:true,cars:false
+ },
+ {
+  title:"Escena 3 · Interior de la vivienda",
+  desc:"Vista seccionada del inmueble. La distribución interior es ilustrativa y no corresponde a un plano confirmado.",
+  cam:[10,8,11],target:[0,1.5,0],roof:false,people:true,cars:false
+ },
+ {
+  title:"Escena 4 · Situación en el inmueble",
+  desc:"Representación esquemática de las personas dentro de la vivienda. No se atribuyen posiciones exactas ni movimientos no documentados.",
+  cam:[7,7,7],target:[0,1,0],roof:false,people:true,cars:false
+ },
+ {
+  title:"Escena 5 · Despliegue policial",
+  desc:"Vista exterior del despliegue de agentes y vehículos alrededor de la vivienda.",
+  cam:[13,8,14],target:[0,1,4],roof:true,people:true,cars:true
+ },
+ {
+  title:"Escena 6 · Vista desde la azotea",
+  desc:"La cámara se eleva para mostrar la cubierta y el entorno superior. La secuencia de disparos se representa sin violencia gráfica.",
+  cam:[9,12,5],target:[0,2,0],roof:true,people:true,cars:true
+ },
+ {
+  title:"Escena 7 · Negociación",
+  desc:"Representación del perímetro policial y de la fase de negociación, sin diálogos inventados.",
+  cam:[11,6,13],target:[0,1,3],roof:false,people:true,cars:true
+ },
+ {
+  title:"Escena 8 · Final de la intervención",
+  desc:"Plano general de cierre. La escena termina con la entrega y el desenlace de la intervención, sin añadir detalles no confirmados.",
+  cam:[15,10,17],target:[0,1,0],roof:true,people:true,cars:true
+ }
+];
+
+let current=0;
+let playing=false;
+let timer=null;
+let voiceEnabled=true;
+let audioContext=null;
+let lastTime=0;
+
+function stopVoice(){
+ if("speechSynthesis" in window) speechSynthesis.cancel();
+}
+
+function narrate(text){
+ if(!voiceEnabled || !("speechSynthesis" in window))return;
+ stopVoice();
+ const utterance=new SpeechSynthesisUtterance(text);
+ utterance.lang="es-ES";
+ utterance.rate=.91;
+ utterance.pitch=.95;
+ speechSynthesis.speak(utterance);
+}
+
+function showScene(index){
+ current=Math.max(0,Math.min(scenes.length-1,index));
+ const s=scenes[current];
+
+ document.getElementById("sceneTitle").textContent=s.title;
+ document.getElementById("description").textContent=s.desc;
+ document.getElementById("timeline").value=current;
+ document.getElementById("timeLabel").textContent=`Escena ${current+1} de ${scenes.length}`;
+
+ roof.visible=s.roof;
+ people.forEach(p=>p.visible=s.people);
+ cars.forEach(c=>c.visible=s.cars);
+ markers.forEach(m=>m.visible=current===2 || current===3 || current===5);
+
+ camera.position.set(...s.cam);
+ controls.target.set(...s.target);
+ controls.update();
+
+ narrate(s.desc);
+}
+
+function play(){
+ playing=true;
+ document.getElementById("play").textContent="Ⅱ Pausar";
+ document.getElementById("play").classList.add("active");
+ timer=setInterval(()=>{
+  if(current<scenes.length-1)showScene(current+1);
+  else pause();
+ },6500);
+}
+function pause(){
+ playing=false;
+ clearInterval(timer);
+ stopVoice();
+ document.getElementById("play").textContent="▶ Reproducir";
+ document.getElementById("play").classList.remove("active");
+}
+
+document.getElementById("play").onclick=()=>playing?pause():play();
+document.getElementById("next").onclick=()=>{pause();showScene(current+1)};
+document.getElementById("prev").onclick=()=>{pause();showScene(current-1)};
+document.getElementById("timeline").oninput=e=>{pause();showScene(+e.target.value)};
+
+document.getElementById("roof").onclick=()=>{
+ roof.visible=!roof.visible;
+ document.getElementById("roof").textContent=roof.visible?"Ocultar tejado":"Mostrar tejado";
+};
+
+document.getElementById("topView").onclick=()=>{
+ camera.position.set(0,19,.1);
+ controls.target.set(0,0,0);
+ controls.update();
+};
+
+document.getElementById("outside").onclick=()=>{
+ camera.position.set(15,8,17);
+ controls.target.set(0,1,0);
+ controls.update();
+};
+
+document.getElementById("sound").onclick=()=>{
+ voiceEnabled=!voiceEnabled;
+ document.getElementById("sound").textContent=voiceEnabled?"🔊 Narración":"🔇 Narración";
+ if(!voiceEnabled)stopVoice();
+ else narrate(scenes[current].desc);
+};
+
+// Parpadeo de luces policiales
+let elapsed=0;
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=clock.getDelta();
+ elapsed+=dt;
+ cars.forEach((car,i)=>{
+  const lights=car.userData.lights;
+  const phase=Math.sin(elapsed*7+i*1.5);
+  lights[0].intensity=phase>0?35:0;
+  lights[1].intensity=phase<=0?35:0;
+ });
+ controls.update();
+ renderer.render(scene,camera);
+}
+const clock=new THREE.Clock();
+
+window.addEventListener("resize",()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
+});
+
+showScene(0);
+animate();
+document.getElementById("loading").style.display="none";
+</script>
+</body>
+</html>
